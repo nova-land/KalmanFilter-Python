@@ -16,7 +16,7 @@ class KalmanFilter(nn.Module):
         self.F = torch.eye(state_dim).to(self.device)
         self.H = torch.eye(obs_dim, state_dim).to(self.device)
 
-        if isinstance(Q, np.ndarray): self.Q = torch.from_numpy(Q).to(self.device)
+        if isinstance(Q, np.ndarray): self.Q = torch.from_numpy(Q).float().to(self.device)
         else: self.Q = torch.eye(obs_dim).mul(Q).to(self.device)
 
         self.R = torch.eye(obs_dim).mul(R).to(self.device)
