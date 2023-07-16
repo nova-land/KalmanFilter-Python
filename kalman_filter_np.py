@@ -42,9 +42,8 @@ class KalmanFilter():
         return self.x, self.P
 
     def step(self, z_new, h_new=None):
-        if isinstance(z_new, float): z_new = np.array(z_new).reshape(-1, 1)
-        if h_new is not None:
-            h = h_new
+        if isinstance(z_new, float): z_new = np.array(z_new)
+        if h_new is not None: h = h_new
         else: h = self.H
 
         if self.counter == 0:
@@ -53,9 +52,8 @@ class KalmanFilter():
             x_new, P_new = self.predict()
             return self.update(x_new, P_new, z_new, h)
 
-    def filter(self, arr: np.ndarray, obs: np.ndarray=None):
-        if obs is not None:
-            assert len(arr) == len(obs)
+    def filter(self, arr: np.ndarray, obs=None):
+        assert (obs is None) or (len(arr) == len(obs))
         if len(arr.shape) == 1: arr = arr.reshape(-1, 1)
         
         arr = arr.T
@@ -63,8 +61,7 @@ class KalmanFilter():
 
         for i in range(arr.shape[-1]):
             z = arr[:, i]
-            if obs is not None:
-                x, _ = self.step(z, obs[i])
+            if obs is not None: x, _ = self.step(z, obs[i])
             else: x, _ = self.step(z)
             res.append(x)
         return np.vstack(res)

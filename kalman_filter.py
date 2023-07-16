@@ -36,7 +36,7 @@ class KalmanFilter(nn.Module):
         x, p = self._predict()
         return x.cpu().numpy(), p.cpu().numpy()
     
-    def update(self, x_new, P_new, z_new, h):
+    def _update(self, x_new, P_new, z_new, h):
         # Predicted Observation Mean
         hx = torch.matmul(h, x_new)
 
@@ -55,18 +55,19 @@ class KalmanFilter(nn.Module):
         h_new: Observation Matrix
         '''
         if isinstance(z_new, float): z_new = torch.tensor([[z_new]]).float().to(self.device)
+        elif isinstance(z_new, np.ndarray): z_new = torch.from_numpy(z_new).float().to(self.device)
         if isinstance(h_new, np.ndarray): h_new = torch.from_numpy(h_new).float().to(self.device)
 
         if h_new is not None: h = h_new
         else: h = self.H
 
         if self.counter == 0:
-            return self.update(self.x, self.P, z_new, h)
+            return self._update(self.x, self.P, z_new, h)
         else:
             x_new, P_new = self._predict()
-            return self.update(x_new, P_new, z_new, h)
+            return self._update(x_new, P_new, z_new, h)
 
-    def filter(self, arr: np.ndarray, obs: np.ndarray=None):
+    def filter(self, arr: np.ndarray, obs=None):
         if obs is not None:
             assert len(arr) == len(obs)
             obs = torch.from_numpy(obs).float().to(self.device)
