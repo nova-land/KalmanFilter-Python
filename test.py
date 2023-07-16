@@ -19,8 +19,8 @@ def KalmanFilterBaseline(x):
     state_means, _ = kf.filter(x)
     return state_means
 
-kf = NumpyKalman(n_feature=1)
-kf2 = TorchKalman(n_feature=1)
+kf = NumpyKalman(obs_dim=1)
+kf2 = TorchKalman(obs_dim=1)
 x = np.array([i for i in range(1, 1001)])
 
 # Create the Ground Truth Data
@@ -36,14 +36,15 @@ smooth_data2 = KalmanFilterBaseline(src_data)
 # Forward Update Test
 for i in range(500, len(src_data), 1):
     new_data, _ = kf.step(src_data[i])
+    new_data2, _ = kf2.step(src_data[i])
     smooth_data = np.append(smooth_data, new_data)
-    smooth_data_c = np.append(smooth_data_c, kf2.step(src_data[i]))
+    smooth_data_c = np.append(smooth_data_c, new_data2)
 
 plt.figure(figsize=(10, 5), dpi=200)
-plt.plot(src_data, label='src')
-plt.plot(smooth_data, label='smooth')
-plt.plot(smooth_data2, label='smooth2')
-plt.plot(smooth_data_c, label='smoothc')
+plt.plot(src_data, label='data')
+plt.plot(smooth_data, label='original')
+plt.plot(smooth_data2, label='numpy')
+plt.plot(smooth_data_c, label='pytorch')
 plt.plot(ground_data, label='ground', c='r')
 plt.legend()
 plt.show()

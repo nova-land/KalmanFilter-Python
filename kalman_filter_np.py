@@ -1,41 +1,70 @@
 import numpy as np
 
 class KalmanFilter():
-    def __init__(self, n_feature, Q=0.01, R=1):   
+    def __init__(self, obs_dim, state_dim=1, Q=0.01, R=1):   
         '''
         Q: transition_covariance
         R: observation_covariance
-        '''     
-        self.I = np.eye(n_feature)
-        self.F = np.eye(n_feature)
-        self.H = np.eye(n_feature)
+        H: Observation Matrix
+        F: state transition matrix
+        '''
+        self.H = np.eye(obs_dim, state_dim)
+        self.F = np.eye(state_dim)
 
-        self.Q = np.eye(n_feature) * Q
-        self.R = np.eye(n_feature) * R
+        if isinstance(Q, np.ndarray): self.Q = Q
+        else: self.Q = np.eye(obs_dim) * Q
+        self.R = np.eye(obs_dim) * R
 
-        # Filter State
-        self.x = np.zeros((n_feature, 1))
-        self.P = np.ones((n_feature, n_feature))
+        # State Mean
+        self.x = np.zeros(state_dim)
+        # State Covariance
+        self.P = np.ones((state_dim,state_dim))
+        self.counter = 0
 
-    def step(self, z_new):
-        if isinstance(z_new, float): z_new = np.array(z_new).reshape(-1, 1)
-        # predict
-        x_new_prior = np.dot(self.F, self.x)
-        P_new_prior = np.dot(np.dot(self.F, self.P), self.F.T) + self.Q
+    def predict(self):
+        x_P_newrior = np.dot(self.F, self.x)
+        P_P_newrior = np.dot(self.F, np.dot(self.P, self.F.T)) + self.Q
+        return x_P_newrior, P_P_newrior
+
+    def update(self, x_new, P_new, z_new, h):
+        # Predicted Observation Mean
+        hx = np.dot(h, x_new)
+
+        # Predicted Observation Covariance
+        hp = np.dot(h, np.dot(P_new, h.T)) + self.R
 
         # update
-        K_new = np.dot(np.dot(P_new_prior, self.H.T), np.linalg.pinv(np.dot(np.dot(self.H, P_new_prior), self.H.T) + self.R))
-        self.x = x_new_prior + np.dot(K_new, (z_new - np.dot(self.H, x_new_prior)))
-        self.P = np.dot(self.I - np.dot(K_new, self.H), P_new_prior)
+        K_new = np.dot(P_new, np.dot(h.T, np.linalg.pinv(hp)))
+
+        self.x = x_new + np.dot(K_new, (z_new - hx))
+        self.P = P_new - np.dot(K_new, np.dot(h, P_new))
+        self.counter += 1
         return self.x, self.P
 
-    def filter(self, arr: np.ndarray):
+    def step(self, z_new, h_new=None):
+        if isinstance(z_new, float): z_new = np.array(z_new).reshape(-1, 1)
+        if h_new is not None:
+            h = h_new
+        else: h = self.H
+
+        if self.counter == 0:
+            return self.update(self.x, self.P, z_new, h)
+        else:
+            x_new, P_new = self.predict()
+            return self.update(x_new, P_new, z_new, h)
+
+    def filter(self, arr: np.ndarray, obs: np.ndarray=None):
+        if obs is not None:
+            assert len(arr) == len(obs)
+        if len(arr.shape) == 1: arr = arr.reshape(-1, 1)
+        
         arr = arr.T
         res = []
 
         for i in range(arr.shape[-1]):
-            z = arr[:, i].reshape(-1, 1)
-            x, _ = self.step(z)
+            z = arr[:, i]
+            if obs is not None:
+                x, _ = self.step(z, obs[i])
+            else: x, _ = self.step(z)
             res.append(x)
-        res = np.hstack(res).T
-        return res
+        return np.vstack(res)
